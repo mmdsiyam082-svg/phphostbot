@@ -1,21 +1,48 @@
-FROM php:8.3-apache
+FROM python:3.12-slim
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libzip-dev unzip \
-    && docker-php-ext-install zip \
-    && a2enmod rewrite headers expires \
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# PHP + required utilities
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        php-cli \
+        php-curl \
+        php-mbstring \
+        php-xml \
+        php-zip \
+        php-json \
+        unzip \
+        git \
+        procps \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY php.ini /usr/local/etc/php/conf.d/hosting.ini
-COPY apache.conf /etc/apache2/sites-available/000-default.conf
-COPY public/ /var/www/html/
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# Python dependencies
+COPY requirements.txt .
 
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && mkdir -p /var/www/html/sites \
-    && chown -R www-data:www-data /var/www/html/sites \
-    && chmod 755 /var/www/html/sites
+RUN pip install --no-cache-dir \
+    fastapi \
+    "uvicorn[standard]" \
+    python-multipart \
+    python-dotenv \
+    aiofiles \
+    "python-telegram-bot==22.5"
 
-WORKDIR /var/www/html
-EXPOSE 80
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Copy project
+COPY . .
+
+# Storage
+RUN mkdir -p \
+    /app/storage/uploads \
+    /app/storage/projects \
+    /app/storage/logs
+
+# Render uses PORT
+EXPOSE 10000
+
+# API starts Telegram bot automatically
+CMD ["python", "api.py"]
