@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: phphostbot
+    runtime: docker
+    plan: free
+    healthCheckPath: /api.php?action=health
+    envVars:
+      - key: HOSTING_API_KEY
+        generateValue: true
+      - key: MAX_UPLOAD_MB
+        value: "50"
+      - key: MAX_PROJECTS
+        value: "100"
